@@ -6,7 +6,7 @@ import { formatPrice } from '../utils/cartUtils';
 import { toast } from 'react-toastify';
 
 export function Cart() {
-  const { items, updateQuantity, removeItem, clearCart, getTotalPrice, getDeliveryFee, getTax, getGrandTotal } = useCart();
+  const { items, updateQuantity, removeItem, clearCart, getTotalPrice, getDeliveryFee, getGrandTotal } = useCart();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const handleCheckout = () => {
@@ -111,10 +111,6 @@ export function Cart() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Delivery Fee</span>
                 <span className="font-semibold">{formatPrice(getDeliveryFee())}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tax</span>
-                <span className="font-semibold">{formatPrice(getTax())}</span>
               </div>
               <div className="border-t pt-3 flex justify-between text-xl font-bold">
                 <span>Total</span>

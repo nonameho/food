@@ -71,8 +71,8 @@ export function DriverDashboard() {
                 <Package className="mr-2" size={20} />
                 Order #{driverStore.currentDelivery.orderId}
               </h3>
-              <p className="text-gray-600">{driverStore.currentDelivery.restaurant.name}</p>
-              <p className="text-gray-600">{driverStore.currentDelivery.customer.address}</p>
+              <p className="text-gray-600">{driverStore.currentDelivery.restaurant?.name || 'N/A'}</p>
+              <p className="text-gray-600">{driverStore.currentDelivery.customer?.address || 'N/A'}</p>
             </div>
             <div className="flex items-center justify-between">
               <div>

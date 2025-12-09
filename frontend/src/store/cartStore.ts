@@ -144,7 +144,7 @@ export const useCartStore = create<CartStore>()(
       },
 
       getGrandTotal: () => {
-        return get().getTotalPrice() + get().getDeliveryFee() + get().getTax();
+        return get().getTotalPrice() + get().getDeliveryFee();
       },
 
       canCheckout: () => {

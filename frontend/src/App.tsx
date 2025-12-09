@@ -10,6 +10,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Navbar } from './components/Navbar';
 import { OwnerDashboard } from './pages/owner/OwnerDashboard';
+import { Payment } from './pages/Payment';
 import { RestaurantEdit } from './pages/owner/RestaurantEdit';
 import { MenuManagement } from './pages/owner/MenuManagement';
 import { OrderManagement } from './pages/owner/OrderManagement';
@@ -19,6 +20,7 @@ import { DeliveryDetails } from './pages/driver/DeliveryDetails';
 import { DeliveryHistory } from './pages/driver/DeliveryHistory';
 import { DriverEarnings } from './pages/driver/DriverEarnings';
 import { DriverProfile } from './pages/driver/DriverProfile';
+import { AdminDashboard } from './pages/admin/Dashboard';
 import './App.css';
 
 function AppContent() {
@@ -33,6 +35,7 @@ function AppContent() {
           <Route path="/restaurants/:id" element={<RestaurantDetail />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/payment" element={<Payment />} />
           <Route path="/track-order" element={<TrackOrderStatus />} />
           <Route path="/orders/:id" element={<OrderTracking />} />
           <Route path="/login" element={<Login />} />
@@ -51,6 +54,9 @@ function AppContent() {
           <Route path="/driver/history" element={<DeliveryHistory />} />
           <Route path="/driver/earnings" element={<DriverEarnings />} />
           <Route path="/driver/profile" element={<DriverProfile />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
         </Routes>
       </main>
 

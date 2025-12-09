@@ -43,7 +43,7 @@ export const driverService = {
     return response.data;
   },
 
-  async acceptDelivery(deliveryId: string): Promise<{ success: boolean; message: string }> {
+  async acceptDelivery(deliveryId: string): Promise<{ success: boolean; data: DeliveryAssignment; message?: string }> {
     const response = await api.post(`/driver/deliveries/${deliveryId}/accept`);
     return response.data;
   },

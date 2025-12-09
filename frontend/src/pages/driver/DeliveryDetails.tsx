@@ -121,17 +121,17 @@ export function DeliveryDetails() {
           </h2>
           <div className="space-y-3">
             <div>
-              <p className="font-semibold">{delivery.restaurant.name}</p>
-              <p className="text-gray-600">{delivery.restaurant.address}</p>
+              <p className="font-semibold">{delivery.restaurant?.name || 'N/A'}</p>
+              <p className="text-gray-600">{delivery.restaurant?.address || 'N/A'}</p>
             </div>
             <div className="flex items-center">
               <Phone className="mr-2" size={16} />
-              <a href={`tel:${delivery.restaurant.phone}`} className="text-blue-600">
-                {delivery.restaurant.phone}
+              <a href={`tel:${delivery.restaurant?.phone || ''}`} className="text-blue-600">
+                {delivery.restaurant?.phone || 'N/A'}
               </a>
             </div>
             <a
-              href={`https://maps.google.com/?q=${delivery.restaurant.latitude},${delivery.restaurant.longitude}`}
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(delivery.restaurant?.address || '')}&dir_action=navigate`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary flex items-center justify-center"
@@ -149,17 +149,17 @@ export function DeliveryDetails() {
           </h2>
           <div className="space-y-3">
             <div>
-              <p className="font-semibold">{delivery.customer.name}</p>
-              <p className="text-gray-600">{delivery.customer.address}</p>
+              <p className="font-semibold">{delivery.customer?.name || 'N/A'}</p>
+              <p className="text-gray-600">{delivery.customer?.address || 'N/A'}</p>
             </div>
             <div className="flex items-center">
               <Phone className="mr-2" size={16} />
-              <a href={`tel:${delivery.customer.phone}`} className="text-blue-600">
-                {delivery.customer.phone}
+              <a href={`tel:${delivery.customer?.phone || ''}`} className="text-blue-600">
+                {delivery.customer?.phone || 'N/A'}
               </a>
             </div>
             <a
-              href={`https://maps.google.com/?q=${delivery.customer.latitude},${delivery.customer.longitude}`}
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(delivery.customer?.address || '')}&dir_action=navigate`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary flex items-center justify-center"

@@ -11,7 +11,7 @@ export function DeliveryCard({ delivery, onAccept }: DeliveryCardProps) {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-xl font-bold">Order #{delivery.orderId}</h3>
-          <p className="text-gray-600">{delivery.restaurant.name}</p>
+          <p className="text-gray-600">{delivery.restaurant?.name || 'N/A'}</p>
         </div>
         <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">
           Available
@@ -23,14 +23,14 @@ export function DeliveryCard({ delivery, onAccept }: DeliveryCardProps) {
           <MapPin className="mr-2 mt-1 text-gray-400" size={16} />
           <div>
             <p className="font-semibold">Pickup</p>
-            <p className="text-sm text-gray-600">{delivery.restaurant.address}</p>
+            <p className="text-sm text-gray-600">{delivery.restaurant?.address || 'N/A'}</p>
           </div>
         </div>
         <div className="flex items-start">
           <MapPin className="mr-2 mt-1 text-gray-400" size={16} />
           <div>
             <p className="font-semibold">Delivery</p>
-            <p className="text-sm text-gray-600">{delivery.customer.address}</p>
+            <p className="text-sm text-gray-600">{delivery.customer?.address || 'N/A'}</p>
           </div>
         </div>
       </div>

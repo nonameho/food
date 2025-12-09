@@ -87,15 +87,15 @@ export function DeliveryHistory() {
               <div className="grid md:grid-cols-3 gap-4 mb-4">
                 <div>
                   <p className="text-sm text-gray-600">Restaurant</p>
-                  <p className="font-semibold">{delivery.restaurant.name}</p>
+                  <p className="font-semibold">{delivery.restaurant?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Customer</p>
-                  <p className="font-semibold">{delivery.customer.name}</p>
+                  <p className="font-semibold">{delivery.customer?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Distance</p>
-                  <p className="font-semibold">{delivery.distance} km</p>
+                  <p className="font-semibold">{delivery.distance ? `${delivery.distance} km` : 'N/A'}</p>
                 </div>
               </div>
 

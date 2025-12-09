@@ -1,19 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { orderService } from '../services/orderService';
+import { restaurantService } from '../services/restaurantService';
 import { toast } from 'react-toastify';
 import { formatPrice } from '../utils/cartUtils';
 
 export function Checkout() {
   const navigate = useNavigate();
-  const { items, getTotalPrice, getDeliveryFee, getTax, getGrandTotal, clearCart, getRestaurantId } = useCart();
+  const { items, getTotalPrice, getDeliveryFee, getGrandTotal, clearCart, getRestaurantId } = useCart();
   const [loading, setLoading] = useState(false);
+  const [restaurant, setRestaurant] = useState<any>(null);
+  const [restaurantLoading, setRestaurantLoading] = useState(true);
   const [formData, setFormData] = useState({
     street: '',
     instructions: '',
     paymentMethod: 'cash_on_delivery' as 'card' | 'digital_wallet' | 'cash_on_delivery',
   });
+
+  useEffect(() => {
+    const loadRestaurant = async () => {
+      const restaurantId = getRestaurantId();
+      if (restaurantId) {
+        try {
+          setRestaurantLoading(true);
+          const response = await restaurantService.getRestaurantById(restaurantId);
+          if (response.success) {
+            setRestaurant(response.data);
+          }
+        } catch (error) {
+          console.error('Failed to load restaurant:', error);
+        } finally {
+          setRestaurantLoading(false);
+        }
+      } else {
+        setRestaurantLoading(false);
+      }
+    };
+
+    loadRestaurant();
+  }, [getRestaurantId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -52,6 +78,11 @@ export function Checkout() {
         paymentMethod: formData.paymentMethod,
       };
 
+      if (formData.paymentMethod === 'card') {
+        navigate('/payment', { state: { orderData } });
+        return;
+      }
+
       const response = await orderService.createOrder(orderData);
 
       if (response.success) {
@@ -77,6 +108,20 @@ export function Checkout() {
       </div>
     );
   }
+
+  if (restaurantLoading) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading restaurant information...</p>
+      </div>
+    );
+  }
+
+  const subtotal = getTotalPrice();
+  const minOrderAmount = restaurant?.minOrderAmount || 0;
+  const isUnderMinimum = subtotal < minOrderAmount;
+  const amountNeeded = minOrderAmount - subtotal;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -178,21 +223,29 @@ export function Checkout() {
                   <span className="text-gray-600">Delivery Fee</span>
                   <span className="font-semibold">{formatPrice(getDeliveryFee())}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="font-semibold">{formatPrice(getTax())}</span>
-                </div>
                 <div className="flex justify-between text-xl font-bold border-t pt-3">
                   <span>Total</span>
                   <span>{formatPrice(getGrandTotal())}</span>
                 </div>
               </div>
+              
+              {isUnderMinimum && (
+                <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-lg">
+                  <p className="text-sm font-medium">
+                    Minimum order amount: {formatPrice(minOrderAmount)}
+                  </p>
+                  <p className="text-sm">
+                    Add {formatPrice(amountNeeded)} more to meet the minimum order requirement
+                  </p>
+                </div>
+              )}
+              
               <button
                 type="submit"
-                disabled={loading}
-                className="btn-primary w-full"
+                disabled={loading || isUnderMinimum}
+                className={`w-full ${isUnderMinimum ? 'btn-disabled' : 'btn-primary'}`}
               >
-                {loading ? 'Processing...' : 'Place Order'}
+                {loading ? 'Processing...' : isUnderMinimum ? `Add ${formatPrice(amountNeeded)} more` : 'Place Order'}
               </button>
             </div>
           </div>

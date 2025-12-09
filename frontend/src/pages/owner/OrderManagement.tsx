@@ -102,6 +102,16 @@ export function OrderManagement() {
     }
   };
 
+  const handleMarkAsReady = async (orderId: string) => {
+    try {
+      await ownerService.updateOrderStatus(orderId, 'ready_for_pickup');
+      toast.success('Ready for pickup');
+      loadOrders();
+    } catch (error) {
+      toast.error('Failed to update order status');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -178,9 +188,9 @@ export function OrderManagement() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-bold mb-2">Customer</h4>
-                  <p className="text-gray-700">{order.customer.name}</p>
-                  <p className="text-gray-600 text-sm">{order.customer.email}</p>
-                  <p className="text-gray-600 text-sm">{order.customer.phone}</p>
+                  <p className="text-gray-700">{order.customer?.name || 'N/A'}</p>
+                  <p className="text-gray-600 text-sm">{order.customer?.email || 'N/A'}</p>
+                  <p className="text-gray-600 text-sm">{order.customer?.phone || 'N/A'}</p>
                 </div>
 
                 <div>
@@ -222,6 +232,18 @@ export function OrderManagement() {
                   >
                     <XCircle size={20} />
                     Reject Order
+                  </button>
+                </div>
+              )}
+
+              {order.status === 'confirmed' && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => handleMarkAsReady(order.id)}
+                    className="btn-primary flex items-center gap-2"
+                  >
+                    <CheckCircle size={20} />
+                    Mark as Ready for Pickup
                   </button>
                 </div>
               )}

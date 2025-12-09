@@ -69,6 +69,7 @@ export function TrackOrderStatus() {
   const [filter, setFilter] = useState<FilterType>('active');
   const [search, setSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
   const isCustomer = isAuthenticated && user?.role === 'customer';
 
@@ -90,6 +91,24 @@ export function TrackOrderStatus() {
       toast.error(message);
     } finally {
       showPrimaryLoader ? setLoading(false) : setRefreshing(false);
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setCancellingOrderId(orderId);
+      await orderService.cancelOrder(orderId);
+      toast.success('Order cancelled successfully');
+      await loadOrders(false);
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Unable to cancel order.';
+      toast.error(message);
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -335,6 +354,21 @@ export function TrackOrderStatus() {
                     ))}
                   </ul>
                 </div>
+                
+                {selectedOrder.status === 'pending' && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <button
+                      onClick={() => handleCancelOrder(selectedOrder.id)}
+                      disabled={cancellingOrderId === selectedOrder.id}
+                      className="w-full btn-danger"
+                    >
+                      {cancellingOrderId === selectedOrder.id ? 'Cancelling...' : 'Cancel Order'}
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      You can cancel your order while it's still pending
+                    </p>
+                  </div>
+                )}
               </div>
             </>
           ) : (

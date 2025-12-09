@@ -1,6 +1,76 @@
 import { Request, Response } from 'express';
 import { prisma } from '../server';
 
+const formatDeliveryResponse = (delivery: any) => {
+  const { order } = delivery;
+
+  return {
+    id: delivery.id,
+    orderId: order.id,
+    restaurant: {
+      name: order.restaurant.name,
+      address: order.restaurant.address,
+      phone: order.restaurant.phone || '',
+      latitude: order.restaurant.latitude,
+      longitude: order.restaurant.longitude
+    },
+    customer: {
+      id: order.customer.id,
+      name: order.customer.name,
+      phone: order.customer.phone || '',
+      address: order.deliveryStreet,
+      latitude: order.deliveryLatitude,
+      longitude: order.deliveryLongitude
+    },
+    items: order.items.map((item: any) => ({
+      name: item.menuItemName || item.name,
+      quantity: item.quantity,
+      price: item.price
+    })),
+    total: order.total,
+    estimatedEarnings: delivery.estimatedEarnings ?? order.deliveryFee ?? 0,
+    distance: delivery.distance ?? 0,
+    estimatedDuration: delivery.estimatedDuration ?? order.restaurant.estimatedDeliveryTime ?? 0,
+    status: delivery.status,
+    pickupTime: delivery.pickupTime,
+    deliveryTime: delivery.deliveryTime,
+    createdAt: delivery.createdAt
+  };
+};
+
+const formatAvailableOrder = (order: any) => ({
+  id: order.id,
+  orderId: order.id,
+  restaurant: {
+    name: order.restaurant.name,
+    address: order.restaurant.address,
+    phone: order.restaurant.phone || '',
+    latitude: order.restaurant.latitude,
+    longitude: order.restaurant.longitude
+  },
+  customer: {
+    id: order.customer.id,
+    name: order.customer.name,
+    phone: order.customer.phone || '',
+    address: order.deliveryStreet,
+    latitude: order.deliveryLatitude,
+    longitude: order.deliveryLongitude
+  },
+  items: order.items.map((item: any) => ({
+    name: item.menuItemName || item.name,
+    quantity: item.quantity,
+    price: item.price
+  })),
+  total: order.total,
+  estimatedEarnings: order.deliveryFee ?? 0,
+  distance: 0,
+  estimatedDuration: order.restaurant.estimatedDeliveryTime ?? 0,
+  status: 'assigned',
+  pickupTime: null,
+  deliveryTime: null,
+  createdAt: order.createdAt
+});
+
 export const getAvailableDeliveries = async (req: Request, res: Response) => {
   try {
     const driverId = req.user?.id;
@@ -12,35 +82,30 @@ export const getAvailableDeliveries = async (req: Request, res: Response) => {
       });
     }
 
-    const deliveries = await prisma.delivery.findMany({
+    const readyOrders = await prisma.order.findMany({
       where: {
-        status: 'assigned',
-        driverId: driverId
+        status: 'ready_for_pickup',
+        delivery: null
       },
       include: {
-        order: {
-          include: {
-            restaurant: true,
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                phone: true
-              }
-            },
-            items: {
-              include: {
-                menuItem: true
-              }
-            }
+        restaurant: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true
           }
-        }
+        },
+        items: true
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
     res.json({
       success: true,
-      data: deliveries
+      data: readyOrders.map(formatAvailableOrder)
     });
   } catch (error) {
     console.error('Get available deliveries error:', error);
@@ -63,21 +128,98 @@ export const acceptDelivery = async (req: Request, res: Response) => {
       });
     }
 
-    const delivery = await prisma.delivery.update({
+    const order = await prisma.order.findUnique({
       where: { id },
-      data: { 
-        status: 'picked_up',
-        pickupTime: new Date()
-      },
       include: {
-        order: {
-          include: {
-            restaurant: true,
-            customer: true,
-            items: true
+        restaurant: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true
+          }
+        },
+        items: true,
+        delivery: true
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found'
+      });
+    }
+
+    if (order.status !== 'ready_for_pickup') {
+      return res.status(400).json({
+        success: false,
+        error: 'Order is not ready for pickup'
+      });
+    }
+
+    if (order.delivery && order.delivery.driverId && order.delivery.driverId !== driverId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Delivery already assigned to another driver'
+      });
+    }
+
+    let deliveryRecord;
+
+    if (!order.delivery) {
+      deliveryRecord = await prisma.delivery.create({
+        data: {
+          orderId: order.id,
+          driverId,
+          status: 'assigned',
+          estimatedEarnings: order.deliveryFee,
+          estimatedDuration: order.restaurant.estimatedDeliveryTime
+        },
+        include: {
+          order: {
+            include: {
+              restaurant: true,
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true
+                }
+              },
+              items: true
+            }
           }
         }
-      }
+      });
+    } else {
+      deliveryRecord = await prisma.delivery.update({
+        where: { id: order.delivery.id },
+        data: { 
+          driverId,
+          status: 'assigned'
+        },
+        include: {
+          order: {
+            include: {
+              restaurant: true,
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true
+                }
+              },
+              items: true
+            }
+          }
+        }
+      });
+    }
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { status: 'out_for_delivery' }
     });
 
     await prisma.user.update({
@@ -87,7 +229,7 @@ export const acceptDelivery = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: delivery,
+      data: formatDeliveryResponse(deliveryRecord),
       message: 'Delivery accepted successfully'
     });
   } catch (error) {
@@ -199,7 +341,22 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       }
     });
 
+    if (status === 'picked_up' || status === 'in_transit') {
+      await prisma.order.update({
+        where: { id: delivery.orderId },
+        data: { status: 'out_for_delivery' }
+      });
+    }
+
     if (status === 'delivered') {
+      await prisma.order.update({
+        where: { id: delivery.orderId },
+        data: {
+          status: 'delivered',
+          actualDeliveryTime: new Date()
+        }
+      });
+
       await prisma.user.update({
         where: { id: driverId },
         data: { 
@@ -212,7 +369,7 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: delivery,
+      data: formatDeliveryResponse(delivery),
       message: 'Delivery status updated successfully'
     });
   } catch (error) {
@@ -338,7 +495,7 @@ export const getMyDeliveries = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: deliveries
+      data: deliveries.map(formatDeliveryResponse)
     });
   } catch (error) {
     console.error('Get my deliveries error:', error);
