@@ -3,16 +3,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { PrismaClient } from '@prisma/client';
 import winston from 'winston';
+import prisma from '../prisma.config';
 
 // Load environment variables
 dotenv.config();
-
-// Initialize Prisma client
-export const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'],
-});
 
 // Initialize logger
 const logger = winston.createLogger({

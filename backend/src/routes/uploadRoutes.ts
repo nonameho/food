@@ -4,10 +4,9 @@ import fs from 'fs';
 import multer from 'multer';
 import { upload } from '../utils/upload';
 import { authenticate } from '../middleware/auth';
-import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
+import prisma from '../../prisma.config';
 
-const prisma = new PrismaClient();
 const router = Router();
 
 // Upload single file
