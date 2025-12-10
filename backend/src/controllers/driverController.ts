@@ -3,34 +3,35 @@ import prisma from '../lib/prisma';
 
 const formatDeliveryResponse = (delivery: any) => {
   const { order } = delivery;
+  const items = order?.items ?? [];
 
   return {
     id: delivery.id,
-    orderId: order.id,
+    orderId: order?.id,
     restaurant: {
-      name: order.restaurant.name,
-      address: order.restaurant.address,
-      phone: order.restaurant.phone || '',
-      latitude: order.restaurant.latitude,
-      longitude: order.restaurant.longitude
+      name: order?.restaurant?.name,
+      address: order?.restaurant?.address,
+      phone: order?.restaurant?.phone || '',
+      latitude: order?.restaurant?.latitude,
+      longitude: order?.restaurant?.longitude
     },
     customer: {
-      id: order.customer.id,
-      name: order.customer.name,
-      phone: order.customer.phone || '',
-      address: order.deliveryStreet,
-      latitude: order.deliveryLatitude,
-      longitude: order.deliveryLongitude
+      id: order?.customer?.id,
+      name: order?.customer?.name,
+      phone: order?.customer?.phone || '',
+      address: order?.deliveryStreet,
+      latitude: order?.deliveryLatitude,
+      longitude: order?.deliveryLongitude
     },
-    items: order.items.map((item: any) => ({
+    items: items.map((item: any) => ({
       name: item.menuItemName || item.name,
       quantity: item.quantity,
       price: item.price
     })),
-    total: order.total,
-    estimatedEarnings: delivery.estimatedEarnings ?? order.deliveryFee ?? 0,
+    total: order?.total,
+    estimatedEarnings: delivery.estimatedEarnings ?? order?.deliveryFee ?? 0,
     distance: delivery.distance ?? 0,
-    estimatedDuration: delivery.estimatedDuration ?? order.restaurant.estimatedDeliveryTime ?? 0,
+    estimatedDuration: delivery.estimatedDuration ?? order?.restaurant?.estimatedDeliveryTime ?? 0,
     status: delivery.status,
     pickupTime: delivery.pickupTime,
     deliveryTime: delivery.deliveryTime,
@@ -174,6 +175,7 @@ export const acceptDelivery = async (req: Request, res: Response) => {
           driverId,
           status: 'assigned',
           estimatedEarnings: order.deliveryFee,
+          driverFee: order.deliveryFee,
           estimatedDuration: order.restaurant.estimatedDeliveryTime
         },
         include: {
@@ -197,7 +199,9 @@ export const acceptDelivery = async (req: Request, res: Response) => {
         where: { id: order.delivery.id },
         data: { 
           driverId,
-          status: 'assigned'
+          status: 'assigned',
+          estimatedEarnings: order.deliveryFee ?? order.delivery?.estimatedEarnings,
+          driverFee: order.deliveryFee ?? order.delivery?.driverFee
         },
         include: {
           order: {
@@ -335,7 +339,8 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
         order: {
           include: {
             restaurant: true,
-            customer: true
+            customer: true,
+            items: true
           }
         }
       }
@@ -349,6 +354,16 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
     }
 
     if (status === 'delivered') {
+      const driverFee = delivery.driverFee ?? delivery.estimatedEarnings ?? delivery.order?.deliveryFee ?? 0;
+
+      // Ensure driverFee is persisted so future calculations use it
+      if (!delivery.driverFee && driverFee) {
+        await prisma.delivery.update({
+          where: { id: delivery.id },
+          data: { driverFee }
+        });
+      }
+
       await prisma.order.update({
         where: { id: delivery.orderId },
         data: {
@@ -362,7 +377,7 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
         data: { 
           driverStatus: 'online',
           totalDeliveries: { increment: 1 },
-          totalEarnings: { increment: delivery.driverFee || 0 }
+          totalEarnings: { increment: driverFee }
         }
       });
     }

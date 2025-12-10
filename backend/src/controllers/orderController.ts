@@ -484,6 +484,8 @@ export const assignDriver = async (req: Request, res: Response) => {
           orderId: orderId,
           driverId: driverId,
           status: 'assigned',
+          driverFee: order.deliveryFee,
+          estimatedEarnings: order.deliveryFee,
         },
       });
     } else {
@@ -493,6 +495,8 @@ export const assignDriver = async (req: Request, res: Response) => {
         data: {
           driverId: driverId,
           status: 'assigned',
+          driverFee: order.deliveryFee ?? order.delivery?.driverFee,
+          estimatedEarnings: order.deliveryFee ?? order.delivery?.estimatedEarnings,
         },
       });
     }
