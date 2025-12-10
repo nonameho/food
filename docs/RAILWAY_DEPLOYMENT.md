@@ -206,7 +206,7 @@ Go to "Variables" tab and add:
 VITE_API_URL=https://backend-production-xxxx.up.railway.app/api
 
 # WebSocket URL (same as backend but with ws protocol)
-VITE_WS_URL=https://backend-production-xxxx.up.railway.app
+VITE_SOCKET_URL=https://backend-production-xxxx.up.railway.app
 ```
 
 ### 4.4 Deploy
@@ -283,7 +283,7 @@ Double-check these critical variables are set:
 
 **Frontend:**
 - ✓ VITE_API_URL
-- ✓ VITE_WS_URL
+- ✓ VITE_SOCKET_URL
 
 ---
 
@@ -296,7 +296,7 @@ Ensure your frontend's API configuration uses the environment variable:
 ```typescript
 // frontend/src/config/api.ts or similar
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 ```
 
 ### 7.2 Test the Connection
@@ -384,7 +384,7 @@ The project is configured with production-optimized TypeScript settings. Ensure 
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string;
-  readonly VITE_WS_URL: string;
+  readonly VITE_SOCKET_URL: string;
 }
 
 interface ImportMeta {
@@ -509,7 +509,7 @@ Use cloud storage for production:
 **Solution:**
 ```typescript
 // Frontend WebSocket connection
-const socket = io(import.meta.env.VITE_WS_URL, {
+const socket = io(import.meta.env.VITE_SOCKET_URL, {
   transports: ['websocket', 'polling']
 });
 ```
