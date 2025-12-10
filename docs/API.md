@@ -1,491 +1,138 @@
-# API Documentation
+# API Reference
 
-This document describes all API endpoints for the Food Ordering App.
+Current backend routes exposed by the Food Ordering API.
 
 ## Base URL
+- Development: `http://localhost:5000/api`
+- All routes return JSON. For protected endpoints send `Authorization: Bearer <jwt>`.
+
+## Response Envelope
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "optional message"
+}
 ```
-Development: http://localhost:5000/api
-Production: https://your-api-domain.com/api
-```
+Validation failures respond with `success: false` and `details` when available.
+
+---
+
+## Health & Diagnostics
+- `GET /api/health` – service heartbeat.
+- `GET /api/debug-env` – echo selected environment variables (unauthenticated).
+
+---
 
 ## Authentication
+- `POST /api/auth/register` – create user `{ email, password, name, role (customer|restaurant_owner|driver|admin), phone? }`.
+- `POST /api/auth/login` – authenticate `{ email, password }`.
+- `GET /api/auth/me` – return the authenticated user.
+- `PUT /api/auth/profile` – update `{ name?, phone?, avatar? }`.
+- `PUT /api/auth/change-password` – `{ currentPassword, newPassword }`.
 
-Most endpoints require authentication. Include the JWT token in the Authorization header:
-
-```
-Authorization: Bearer <your-jwt-token>
-```
-
-## Response Format
-
-All responses follow this format:
-
-### Success Response
-```json
-{
-  "success": true,
-  "data": { ... }, // Response data
-  "message": "Success message"
-}
-```
-
-### Error Response
-```json
-{
-  "success": false,
-  "error": "Error message",
-  "details": { ... } // Optional validation details
-}
-```
+Roles are enforced by individual routes (see below); `admin` bypasses role checks.
 
 ---
 
-## Authentication Endpoints
-
-### Register
-Create a new user account.
-
-**Endpoint**: `POST /auth/register`
-
-**Request Body**:
-```json
-{
-  "email": "user@example.com",
-  "password": "password123",
-  "name": "John Doe",
-  "role": "customer", // customer | restaurant_owner | driver | admin
-  "phone": "+1234567890"
-}
-```
-
-**Success Response** (201):
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "uuid",
-      "email": "user@example.com",
-      "name": "John Doe",
-      "role": "customer",
-      "phone": "+1234567890",
-      "createdAt": "2024-01-01T00:00:00Z"
-    },
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  },
-  "message": "User registered successfully"
-}
-```
-
-**Error Response** (400):
-```json
-{
-  "success": false,
-  "error": "User already exists with this email"
-}
-```
-
-### Login
-Authenticate user and get JWT token.
-
-**Endpoint**: `POST /auth/login`
-
-**Request Body**:
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-**Success Response** (200):
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "uuid",
-      "email": "user@example.com",
-      "name": "John Doe",
-      "role": "customer",
-      "phone": "+1234567890"
-    },
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  },
-  "message": "Login successful"
-}
-```
-
-**Error Response** (401):
-```json
-{
-  "success": false,
-  "error": "Invalid email or password"
-}
-```
-
-### Get Current User
-Get the currently authenticated user's profile.
-
-**Endpoint**: `GET /auth/me`
-
-**Headers**: `Authorization: Bearer <token>`
-
-**Success Response** (200):
-```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "name": "John Doe",
-    "role": "customer",
-    "phone": "+1234567890",
-    "createdAt": "2024-01-01T00:00:00Z",
-    "updatedAt": "2024-01-01T00:00:00Z"
-  }
-}
-```
-
-**Error Response** (401):
-```json
-{
-  "success": false,
-  "error": "Not authenticated"
-}
-```
-
-### Update Profile
-Update the current user's profile information.
-
-**Endpoint**: `PUT /auth/profile`
-
-**Headers**: `Authorization: Bearer <token>`
-
-**Request Body**:
-```json
-{
-  "name": "John Smith",
-  "phone": "+1234567890"
-}
-```
-
-**Success Response** (200):
-```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "name": "John Smith",
-    "role": "customer",
-    "phone": "+1234567890",
-    "updatedAt": "2024-01-01T00:00:00Z"
-  },
-  "message": "Profile updated successfully"
-}
-```
-
-**Error Response** (400):
-```json
-{
-  "success": false,
-  "error": "Validation failed",
-  "details": [
-    {
-      "field": "name",
-      "message": "Name must be at least 2 characters"
-    }
-  ]
-}
-```
-
-### Change Password
-Change the current user's password.
-
-**Endpoint**: `PUT /auth/change-password`
-
-**Headers**: `Authorization: Bearer <token>`
-
-**Request Body**:
-```json
-{
-  "currentPassword": "oldpassword123",
-  "newPassword": "newpassword123"
-}
-```
-
-**Success Response** (200):
-```json
-{
-  "success": true,
-  "message": "Password changed successfully"
-}
-```
-
-**Error Response** (400):
-```json
-{
-  "success": false,
-  "error": "Current password is incorrect"
-}
-```
+## Restaurants
+- `GET /api/restaurants` – public list. Query: `page`, `pageSize`, `search`, `cuisine`, `priceRange`, `sortBy` (default `rating`), `sortOrder` (`asc|desc`).
+- `GET /api/restaurants/:id` – public details with categories/items, reviews, counts.
+- `GET /api/restaurants/my/all` – auth (restaurant_owner/admin). Returns the caller’s restaurant (owners have one).
+- `POST /api/restaurants` – auth (restaurant_owner/admin). Body: `name`, `description`, `cuisine`, `address`, `phone?`, `email?`, `priceRange (budget|medium|premium)`, `deliveryFee`, `minOrderAmount`, `estimatedDeliveryTime`.
+- `PUT /api/restaurants/:id` – auth owner/admin. Body fields above plus `banner`, `isOpen`.
+- `DELETE /api/restaurants/:id` – auth owner/admin.
 
 ---
 
-## User Roles
+## Menu Management (`/api/menu`, auth required)
+- `POST /api/menu/categories` – create category `{ restaurantId, name, description?, order? }`.
+- `PUT /api/menu/categories/:id` – update `{ name?, description?, order?, isActive? }`.
+- `DELETE /api/menu/categories/:id` – remove category.
+- `POST /api/menu/items` – create menu item `{ restaurantId, categoryId, name, description, price, image?, preparationTime? }`.
+- `PUT /api/menu/items/:id` – update menu item fields `{ name?, description?, price?, image?, isAvailable?, preparationTime? }`.
+- `DELETE /api/menu/items/:id` – delete menu item.
+- `POST /api/menu/customizations` – add customization group `{ menuItemId, name, type, required? }`.
+- `POST /api/menu/customization-options` – add option `{ menuItemCustomizationId, name, priceModifier }`.
 
-### Customer
-- Can browse restaurants and menus
-- Can place orders
-- Can track orders
-- Can write reviews
-- Can chat with restaurants
-
-### Restaurant Owner
-- Can manage restaurant profile
-- Can manage menu items and categories
-- Can view and manage orders
-- Can chat with customers
-
-### Driver
-- Can view assigned deliveries
-- Can update delivery status
-- Can update location for tracking
-
-### Admin
-- Can manage all restaurants
-- Can view all orders
-- Can manage users
-- Can view platform analytics
+Restaurant ownership is checked for menu items/categories; customization routes require auth but currently do not enforce ownership in code.
 
 ---
 
-## HTTP Status Codes
-
-- `200` - OK: Request succeeded
-- `201` - Created: Resource created successfully
-- `400` - Bad Request: Invalid request data
-- `401` - Unauthorized: Authentication required or failed
-- `403` - Forbidden: Not authorized to access resource
-- `404` - Not Found: Resource not found
-- `500` - Internal Server Error: Server error
+## Menu Items (public browse + protected CRUD)
+- `GET /api/menu-items` – requires `restaurantId` query, optional `categoryId`.
+- `GET /api/menu-items/:id` – fetch single item with customizations.
+- `POST /api/menu-items` – auth owner/admin. Same body as menu item creation above.
+- `PUT /api/menu-items/:id` – auth owner/admin. Same updatable fields as above.
+- `DELETE /api/menu-items/:id` – auth owner/admin.
 
 ---
 
-## Rate Limiting
-
-Rate limits are applied to API endpoints:
-- Authentication endpoints: 5 requests per minute
-- General API: 100 requests per minute
-
-Rate limit headers are included in responses:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1641234567
-```
-
----
-
-## Error Codes
-
-| Code | Description |
-|------|-------------|
-| AUTH_REQUIRED | Authentication token is missing or invalid |
-| USER_NOT_FOUND | User does not exist |
-| INVALID_PASSWORD | Password is incorrect |
-| EMAIL_EXISTS | Email already registered |
-| VALIDATION_ERROR | Request validation failed |
-| UNAUTHORIZED | User doesn't have permission |
-| NOT_FOUND | Requested resource not found |
-| SERVER_ERROR | Internal server error |
+## Orders (`/api/orders`, auth required)
+- `POST /api/orders` – customers only. Body:  
+  - `restaurantId`  
+  - `items`: `[{ menuItemId, quantity, customizations?: [{ customizationId, optionId, optionName?, priceModifier? }] }]`  
+  - `deliveryAddress`: `{ street, latitude?, longitude?, instructions? }`  
+  - `paymentMethod`: `card | digital_wallet | cash_on_delivery`  
+  - `scheduledFor?` (ISO string), `notes?`  
+  Enforces restaurant open status and minimum order amount; totals include restaurant delivery fee.
+- `GET /api/orders/my` – list orders for the caller (customers, their restaurant as owner, or driver’s deliveries). Query: `page`, `pageSize`, `status?`.
+- `GET /api/orders/:id` – view an order if you are the customer, restaurant owner, assigned driver, or admin.
+- `PUT /api/orders/:id/status` – restaurant owner/driver/admin. Body `{ status }` with allowed transitions enforced (e.g., `pending`→`confirmed|cancelled`, `ready_for_pickup`→`out_for_delivery|delivered`).
+- `PUT /api/orders/:id/cancel` – customer or admin; blocked once out for delivery/delivered.
+- `PUT /api/orders/:orderId/assign-driver` – restaurant_owner/admin/driver. Body `{ driverId }`; creates/updates delivery record and marks order `confirmed`.
 
 ---
 
-## Testing with cURL
-
-### Register
-```bash
-curl -X POST http://localhost:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "password123",
-    "name": "John Doe",
-    "role": "customer"
-  }'
-```
-
-### Login
-```bash
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "password123"
-  }'
-```
-
-### Get Current User
-```bash
-curl http://localhost:5000/api/auth/me \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
+## Order Management (`/api/orders/manage`, auth required)
+- `GET /api/orders/manage/restaurant/:restaurantId` – owner/admin list with optional `status` query.
+- `PUT /api/orders/manage/:id/status` – owner/admin. Body `{ status }`.
+- `POST /api/orders/manage/:id/accept` – owner; only from `pending` → `confirmed`.
+- `POST /api/orders/manage/:id/reject` – owner; only from `pending` → `cancelled`.
 
 ---
 
-## Token Expiration
-
-JWT tokens expire after 7 days (configurable via `JWT_EXPIRES_IN` environment variable).
-
-When a token expires, the API will return a 401 error. The client should then prompt the user to login again.
-
----
-
-## Best Practices
-
-1. **Store tokens securely**: Use httpOnly cookies or secure storage
-2. **Handle token expiration**: Implement automatic token refresh
-3. **Validate on client**: Always validate inputs before sending to API
-4. **Handle errors gracefully**: Show user-friendly error messages
-5. **Use HTTPS**: Always use HTTPS in production
-6. **Keep tokens confidential**: Never expose tokens in client-side code
+## Payments (`/api/payment`)
+- `POST /api/payment/webhook` – Stripe webhook endpoint (raw JSON body; no auth).
+- `POST /api/payment/create-intent` – auth; customer owning the order. Body `{ orderId }`. Returns Stripe `clientSecret` and `paymentIntentId`.
+- `POST /api/payment/confirm` – auth; updates payment using `{ paymentIntentId }`.
+- `POST /api/payment/refund` – auth admin. Body `{ orderId, reason }`. Marks payment refunded after Stripe refund.
 
 ---
 
-## Postman Collection
-
-A Postman collection is available in the `/docs` directory with all endpoints pre-configured.
-
-Import the collection and set up environment variables:
-- `baseUrl`: API base URL
-- `token`: JWT token (set after login)
+## Uploads (`/api/upload`)
+- `POST /api/upload/image` – auth. `multipart/form-data` with field `image` and `restaurantId`. Ensures caller owns the restaurant; responds with file `url` (served via `/api/upload/file/:filename`).
+- `GET /api/upload/file/:filename` – public file serving for uploaded assets.
 
 ---
 
-## SDK/Libraries
-
-### JavaScript/TypeScript
-
-```typescript
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
-});
-
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Login
-const login = async (email: string, password: string) => {
-  const response = await api.post('/auth/login', { email, password });
-  localStorage.setItem('token', response.data.data.token);
-  return response.data;
-};
-```
-
-### Python
-
-```python
-import requests
-
-api = requests.Session()
-api.headers.update({'Content-Type': 'application/json'})
-
-# Login
-def login(email, password):
-    response = api.post('http://localhost:5000/api/auth/login', json={
-        'email': email,
-        'password': password
-    })
-    token = response.json()['data']['token']
-    api.headers.update({'Authorization': f'Bearer {token}'})
-    return response.json()
-```
+## Restaurant Stats
+- `GET /api/stats/:restaurantId` – auth owner/admin. Returns totals (orders, revenue), last-30-day daily counts, and top menu items for delivered orders.
 
 ---
 
-## WebSocket Events (for Real-time Features)
-
-### Connect
-```javascript
-import { io } from 'socket.io-client';
-
-const socket = io('http://localhost:5000', {
-  auth: {
-    token: 'your-jwt-token'
-  }
-});
-```
-
-### Events
-
-**Join order room for tracking**:
-```javascript
-socket.emit('join-order', 'order-id');
-```
-
-**Join restaurant room**:
-```javascript
-socket.emit('join-restaurant', 'restaurant-id');
-```
-
-**Join user room**:
-```javascript
-socket.emit('join-user', 'user-id');
-```
-
-**Send location update (drivers only)**:
-```javascript
-socket.emit('driver-location-update', {
-  orderId: 'order-id',
-  lat: 37.7749,
-  lng: -122.4194
-});
-```
-
-### Listen for events
-
-**Order status updates**:
-```javascript
-socket.on('order-status-update', (data) => {
-  console.log('Order status:', data.status);
-});
-```
-
-**Driver location updates**:
-```javascript
-socket.on('location-update', (data) => {
-  console.log('Driver location:', data.lat, data.lng);
-});
-```
-
-**New chat messages**:
-```javascript
-socket.on('new-message', (message) => {
-  console.log('New message:', message);
-});
-```
+## Driver API (`/api/driver`, auth required)
+- `GET /api/driver/available-deliveries` – list orders in `ready_for_pickup` without a driver.
+- `POST /api/driver/deliveries/:id/accept` – accept delivery for order `id`; sets order to `out_for_delivery` and driver status to `busy`.
+- `PUT /api/driver/status` – update driver availability `{ status: offline|online|busy }`.
+- `PUT /api/driver/location` – update driver coordinates `{ lat, lng }`.
+- `PUT /api/driver/deliveries/:id/status` – update delivery `{ status }`; when set to `delivered` it closes the order and increments driver earnings/deliveries.
+- `GET /api/driver/earnings` – aggregate totals (all time, today, last 7 days, last 30 days).
+- `GET /api/driver/deliveries` – list deliveries for the authenticated driver.
 
 ---
 
-## Coming Soon
+## WebSocket Events
+Namespace uses the same host as the API.
 
-Additional endpoints will be added for:
-- Restaurant management
-- Menu management
-- Order placement and tracking
-- Payment processing
-- Review system
-- Chat system
-- Admin dashboard
+- Join rooms: `join-order <orderId>`, `join-restaurant <restaurantId>`, `join-user <userId>`, `join-driver <driverId>`.
+- Driver location updates: client emits `driver-location-update { orderId, lat, lng }`; server broadcasts `location-update` and `driver-location-update` to the order room.
+- Delivery status updates: client emits `delivery-status-update { orderId, restaurantId, status }`; server broadcasts `order-status-update` to order and restaurant rooms.
 
-See individual feature documentation for details.
+---
+
+## Roles At A Glance
+- `customer`: place/cancel orders, view own orders.
+- `restaurant_owner`: manage their restaurant, menus, orders, drivers for their orders.
+- `driver`: accept/update deliveries, update status/location, view earnings.
+- `admin`: full access; bypasses role checks.
