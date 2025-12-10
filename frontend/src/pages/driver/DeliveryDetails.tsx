@@ -46,8 +46,14 @@ export function DeliveryDetails() {
   }, [delivery, driverStore]);
 
   const handleStatusUpdate = async (newStatus: string) => {
+    if (!delivery?.id) {
+      toast.error('Delivery not found');
+      return;
+    }
+
     try {
-      await driverStore.updateDeliveryStatus(newStatus);
+      await driverStore.updateDeliveryStatus(delivery.id, newStatus);
+      setDelivery(prev => prev ? { ...prev, status: newStatus } : prev);
       toast.success(`Delivery status updated to ${newStatus}`);
       
       if (newStatus === 'delivered') {
@@ -63,7 +69,7 @@ export function DeliveryDetails() {
       case 'assigned':
         return {
           text: 'Mark as Picked Up',
-          nextStatus: 'picked_up',
+          nextStatus: 'in_transit',
           color: 'bg-blue-600 hover:bg-blue-700'
         };
       case 'picked_up':

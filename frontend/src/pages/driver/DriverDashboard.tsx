@@ -31,9 +31,10 @@ export function DriverDashboard() {
 
   const handleAcceptDelivery = async (deliveryId: string) => {
     try {
-      await driverStore.acceptDelivery(deliveryId);
+      const accepted = await driverStore.acceptDelivery(deliveryId);
       toast.success('Delivery accepted successfully');
-      navigate(`/driver/delivery/${deliveryId}`);
+      const targetId = accepted?.id || deliveryId;
+      navigate(`/driver/delivery/${targetId}`);
     } catch (error) {
       toast.error('Failed to accept delivery');
     }
