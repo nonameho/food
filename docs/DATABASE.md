@@ -18,7 +18,7 @@ User (Role-Based Entity - All users share same table)
     │   └─ receives ← ChatMessage
     │
     ├─ [restaurant_owner role]
-    │   ├─ owns → Restaurant (Restaurant.id = ownerId)
+    │   ├─ owns → Restaurant (Restaurant.ownerId is unique per owner)
     │   ├─ receives ← ChatMessage
     │   └─ sends → ChatMessage
     │
@@ -32,7 +32,7 @@ User (Role-Based Entity - All users share same table)
         └─ receives ← ChatMessage
                 │
                 │
-Restaurant (ID equals ownerId - set in application code)
+Restaurant (owned by restaurant_owner via ownerId)
     │
     ├─ has many → MenuCategory
     │   └─ has many → MenuItem
@@ -85,39 +85,41 @@ PromoCode (System-wide discount codes)
 - `name`: User's name
 - `role`: User type (customer, restaurant_owner, driver, admin)
 - `phone`: Optional phone number
+- `driverStatus`: Driver availability (offline, online, busy) - defaults to offline
+- `driverLocationLat/driverLocationLng`: Optional last known coordinates for drivers
+- `lastLocationUpdate`: Timestamp for last driver location ping
+- `totalDeliveries`: Number of deliveries completed by driver (default 0)
+- `totalEarnings`: Earnings total for driver (default 0)
 - `createdAt`: Record creation timestamp
 - `updatedAt`: Last update timestamp
 
 **Relationships**:
-- One-to-Many with Restaurant (owner)
+- One-to-One with Restaurant (owner)
 - One-to-Many with Order (customer)
 - One-to-Many with Review
 - One-to-Many with Favorite
-- One-to-Many with Delivery (driver) - Access via Order → Delivery
+- One-to-Many with Delivery (driverDeliveries relation)
 - One-to-Many with ChatMessage (sent and received)
 
 ### 2. Restaurant
 
 **Purpose**: Stores restaurant information
 
-**Important Convention**:
-The `id` field MUST be explicitly set to the same value as `ownerId` when creating a restaurant. This is a business rule enforced at the application level, not by the database schema.
-
 **Key Fields**:
-- `id`: Restaurant identifier (must equal ownerId - set manually in application code)
+- `id`: UUID primary key (auto-generated)
 - `name`: Unique restaurant name
 - `description`: Restaurant description
 - `logo`: Optional logo image URL
 - `banner`: Optional banner image URL
 - `cuisine`: Type of cuisine (Italian, Chinese, etc.)
-- `rating`: Average rating (0-5)
-- `totalReviews`: Total number of reviews
+- `rating`: Average rating (0-5, default 0)
+- `totalReviews`: Total number of reviews (default 0)
 - `priceRange`: budget, medium, premium
 - `address`: Physical address
 - `latitude/longitude`: Location for delivery calculations
 - `phone`: Optional phone number
 - `email`: Optional email address
-- `ownerId`: ID of the restaurant owner (links to User.id)
+- `ownerId`: ID of the restaurant owner (links to User.id, unique per owner)
 - `isActive`: Whether restaurant is active
 - `isOpen`: Whether restaurant is currently open
 - `deliveryFee`: Cost for delivery
@@ -126,22 +128,18 @@ The `id` field MUST be explicitly set to the same value as `ownerId` when creati
 - `createdAt`: Record creation timestamp
 - `updatedAt`: Last update timestamp
 
-**Example** (JavaScript/TypeScript):
-```javascript
-// When creating a restaurant:
-const restaurant = await prisma.restaurant.create({
-  data: {
-    id: ownerId,  // Must explicitly set id = ownerId
-    name: 'My Restaurant',
-    description: 'Great food!',
-    // ... other fields
-    ownerId: ownerId,  // Also set as ownerId field
-  },
-});
-```
+**Relationships**:
+- One-to-One with User (owner)
+- One-to-Many with MenuCategory
+- One-to-Many with MenuItem
+- One-to-Many with OperatingHours
+- One-to-Many with Order
+- One-to-Many with Favorite
+- One-to-Many with Review
 
 **Indexes**:
-- Owner ID
+- Name (unique)
+- Owner ID (unique)
 - Active status
 - Cuisine type
 
@@ -151,6 +149,7 @@ const restaurant = await prisma.restaurant.create({
 
 **Key Fields**:
 - `name`: Category name (Appetizers, Main Course, etc.)
+- `description`: Optional category description
 - `order`: Display order
 - `isActive`: Whether category is shown
 
@@ -243,8 +242,8 @@ const restaurant = await prisma.restaurant.create({
 - `deliveryInstructions`: Optional delivery instructions
 - `scheduledFor`: Optional scheduled delivery time
 - `notes`: Optional order notes
-- `estimatedDeliveryTime`: Estimated delivery time
-- `actualDeliveryTime`: Actual delivery completion time
+- `estimatedDeliveryTime`: Optional estimated delivery timestamp
+- `actualDeliveryTime`: Optional actual delivery completion timestamp
 - `createdAt`: Record creation timestamp
 - `updatedAt`: Last update timestamp
 
@@ -342,6 +341,8 @@ pending → confirmed → preparing → out_for_delivery → delivered
 - `status`: Delivery status (DeliveryStatus enum)
 - `distance`: Optional distance in km
 - `estimatedDuration`: Optional estimated duration in minutes
+- `driverFee`: Optional driver payout for this delivery
+- `estimatedEarnings`: Optional estimate of driver earnings
 - `createdAt`: Record creation timestamp
 - `updatedAt`: Last update timestamp
 
@@ -365,8 +366,8 @@ pending → confirmed → preparing → out_for_delivery → delivered
 - `pickupLongitude`: Restaurant location longitude
 - `destLatitude`: Customer location latitude
 - `destLongitude`: Customer location longitude
-- `distance`: Distance in km
-- `duration`: Estimated duration in minutes
+- `distance`: Distance in km (required)
+- `duration`: Estimated duration in minutes (required)
 - `createdAt`: Record creation timestamp
 - `updatedAt`: Last update timestamp
 
@@ -496,11 +497,14 @@ pending → confirmed → preparing → out_for_delivery → delivered
 The schema includes strategic indexes for performance:
 
 - **User**: Email, Role
-- **Restaurant**: Owner ID, Active status, Cuisine
+- **Restaurant**: Name (unique), Owner ID, Active status, Cuisine
 - **Order**: Customer ID, Restaurant ID, PromoCode ID, Status, Created date, Payment status
 - **Menu**: Restaurant ID, Category ID, Availability
+- **Delivery**: Driver ID, Status
 - **Payment**: Payment status, Transaction ID
+- **PromoCode**: Active status, Code, Valid date range
 - **Chat**: Sender ID, Receiver ID, Created date
+- **OperatingHours**: Restaurant ID, (restaurantId, dayOfWeek) unique
 
 ## Enums
 
@@ -510,6 +514,12 @@ UserRole {
   restaurant_owner
   driver
   admin
+}
+
+DriverStatus {
+  offline
+  online
+  busy
 }
 
 OrderStatus {
@@ -553,10 +563,15 @@ DeliveryStatus {
 
 ### Unique Constraints
 - User email
-- Restaurant name (per owner)
+- Restaurant name (global unique)
+- Restaurant ownerId (one restaurant per owner)
+- OperatingHours (restaurantId + dayOfWeek)
 - Favorite (customer + restaurant)
-- Chat message ID
-- Promo code
+- Payment (orderId)
+- Delivery (orderId)
+- DeliveryRoute (deliveryId)
+- Review (orderId)
+- Promo code (code)
 
 ### Not Null Constraints
 - All ID fields
@@ -609,21 +624,9 @@ Sample data includes:
 4. Update relationships in related tables
 5. Document the table in this file
 
-### Restaurant ID Convention ⚠️
-**Important**: The Restaurant model's `id` field must be set to the same value as `ownerId` when creating a restaurant. This is a business rule enforced at the application level, not by the database schema.
-
-**Example**:
-```javascript
-const restaurant = await prisma.restaurant.create({
-  data: {
-    id: ownerId,  // CRITICAL: Must set id = ownerId
-    name: 'My Restaurant',
-    ownerId: ownerId,  // Must also set this field
-  },
-});
-```
-
-Failure to follow this convention will break the application logic and foreign key relationships.
+### Restaurant Ownership Rule ⚠️
+- Restaurant `id` is auto-generated (UUID). Do not override it to equal the owner's ID.
+- `ownerId` is unique, ensuring one restaurant per owner. Always set this field when creating a restaurant.
 
 ### PromoCode Usage in Orders
 When creating an order with a promo code:
@@ -706,8 +709,8 @@ const deliveries = await prisma.delivery.findMany({
 **Issue**: Migration conflicts
 **Solution**: Reset migrations in development, use `--create-only` for production
 
-**Issue**: Restaurant creation breaks application logic
-**Solution**: When creating a restaurant, you MUST set `id` to the same value as `ownerId`. See "Restaurant ID Convention" in Best Practices.
+**Issue**: Restaurant creation fails with uniqueness errors
+**Solution**: Ensure the restaurant name is unique and the owner does not already have a restaurant (`ownerId` is unique).
 
 **Issue**: Promo code usage not tracked
 **Solution**: Always set `promoCodeId` on orders to track which promo codes were used. Increment `usedCount` after successful payment.
