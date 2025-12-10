@@ -3,6 +3,14 @@
 
 A food ordering and tracking platform.
 
+## Documentation
+- `SETUP.md` for step-by-step local setup
+- `ARCHITECTURE_AND_TECH_STACK.md` for design decisions
+- `IMAGE_UPLOAD_GUIDE.md` for banner uploads
+- `OWNER_ACCOUNTS.md` and `DRIVER_DASHBOARD_PLAN.md` for role-specific flows
+- `docs/API.md` and `docs/DATABASE.md` for API + schema details
+- `docs/RAILWAY_DEPLOYMENT.md` for the current deployment walkthrough
+
 ## Tech Stack
 
 ### Backend
@@ -20,62 +28,45 @@ A food ordering and tracking platform.
 ## Project Structure
 
 ```
-food-ordering-app/
-├── backend/              # Express.js API server
+food/
+├── backend/                      # Express.js API server
 │   ├── src/
-│   │   ├── controllers/ # Route handlers
-│   │   ├── services/    # Business logic
-│   │   ├── middleware/  # Custom middleware
-│   │   ├── routes/      # API routes
-│   │   ├── prisma/      # Database schema & migrations
-│   │   └── types/       # TypeScript types
+│   │   ├── controllers/         # Route handlers
+│   │   ├── services/            # Business logic helpers
+│   │   ├── middleware/          # Auth, validation, etc.
+│   │   ├── routes/              # API routes
+│   │   ├── prisma/              # Migrations, seed script
+│   │   ├── utils/               # Validation helpers, formatters
+│   │   ├── lib/                 # Prisma client, shared libs
+│   │   └── server.ts            # App entrypoint
+│   ├── prisma/schema.prisma
+│   ├── .env.example
 │   └── package.json
 │
-├── frontend/            # React web application
+├── frontend/                    # React web application (Vite)
 │   ├── src/
-│   │   ├── components/ # Reusable UI components
-│   │   ├── pages/      # Page components
-│   │   ├── hooks/      # Custom React hooks
-│   │   ├── services/   # API service functions
-│   │   ├── store/      # State management
-│   │   └── types/      # TypeScript types
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── contexts/
+│   │   ├── services/
+│   │   ├── store/
+│   │   └── types/
+│   ├── vite.config.ts
+│   ├── .env.example
 │   └── package.json
 │
-└── shared/             # Shared types and utilities
-    └── types/
+├── shared/types/                # Shared type definitions
+└── docs/                        # API/DB/deployment references
 ```
 
 ## Features
-
-### MVP (Phase 1)
-- ✅ User authentication & profiles
-- ✅ Restaurant browsing & search
-- ✅ Menu browsing & shopping cart
-- ✅ Order placement
-- ✅ Payment integration (cards, cash on delivery)
-- ✅ Order status tracking
-- ✅ Admin dashboard (basic)
-
-### Phase 2
-- 🟡 Real-time driver tracking (backend implemented, UI limited)
-- 🔲 Reviews & ratings (database schema only)
-- 🔲 Promo codes (database schema only)
-- 🔲 Chat system (database schema only)
-- 🟡 Order scheduling (backend support, limited UI)
-- 🔲 Push notifications
-
-### Phase 3
-- 🔲 Loyalty program
-- 🟡 Advanced analytics (restaurant stats implemented)
-- 🔲 Mobile apps (iOS/Android)
-
-### Additional Implemented Features
-- ✅ Restaurant management (owner dashboard)
-- ✅ Driver management (driver dashboard)
-- ✅ Image upload for restaurant banners
-- ✅ Menu management (categories and items)
-- ✅ Order management for restaurants
-- ✅ Multi-role support (customer, restaurant_owner, driver, admin)
+- Authentication with JWT and role-aware guards (customer, restaurant_owner, driver, admin)
+- Restaurant management: menus, categories, customizations, availability, image uploads
+- Ordering flow with order items, scheduling support, status management, and Stripe-based payments/refunds
+- Driver operations: delivery assignment, status/location updates, earnings
+- Real-time updates over Socket.io (order status, driver location)
+- Restaurant analytics endpoints and owner/driver/admin dashboards in the frontend
+- Additional models available in the schema for future work (promos, reviews, chat, loyalty)
 
 ## Getting Started
 
@@ -116,6 +107,7 @@ npm run dev
 ```
 
 Backend will run on http://localhost:5000
+See `.env.example` for optional email/payment configuration.
 
 ### Frontend Setup
 
@@ -174,15 +166,8 @@ Using Socket.io for:
 
 ## Testing
 
-```bash
-# Backend tests
-cd backend
-npm test
-
-# Frontend tests
-cd frontend
-npm test
-```
+- Backend: `cd backend && npm test`
+- Frontend: no automated tests yet (lint/format scripts available)
 
 ## Deployment
 
@@ -195,7 +180,7 @@ Deploy to: Vercel, Netlify, GitHub Pages
 ### Database
 Host on: Neon, Supabase, AWS RDS
 
-See `docs/DEPLOYMENT.md` for detailed deployment guide.
+See `docs/RAILWAY_DEPLOYMENT.md` for the current deployment guide.
 
 ## Contributing
 
